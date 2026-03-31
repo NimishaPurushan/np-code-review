@@ -8,3 +8,18 @@ wheels/
 
 # Virtual environments
 .venv
+.env
+
+# Logs and temporary files
+*.log
+*.tmp
+*.cache
+
+# OS-specific files
+.DS_Store
+
+
+# Terraform files
+*.tfstate
+*.tfstate.backup
+.terraform/
