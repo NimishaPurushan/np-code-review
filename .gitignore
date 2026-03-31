@@ -18,9 +18,13 @@ wheels/
 # OS-specific files
 .DS_Store
 
-
 # Terraform files
 *.tfstate
 *.tfstate.backup
 .terraform/
 .terraform.lock.hcl
+
+# Test artifact
+.coverage
+htmlcov/
+CODE_REVIEW_REPORT.md
