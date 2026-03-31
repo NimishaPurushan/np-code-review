@@ -1,0 +1,41 @@
+## 🤖 AI-Powered Code Review Summary
+
+### 📊 Review Metrics
+| Metric | Count | Status |
+|--------|-------|--------|
+| **Files Reviewed** | {files_reviewed} | ✅ |
+| **Total Comments** | {total_comments} | 📝 |
+| **Critical Issues** | {critical_count} | 🔴 |
+| **Warnings** | {warning_count} | 🟡 |
+| **Suggestions** | {suggestion_count} | 🔵 |
+| **Praise** | {praise_count} | 💚 |
+
+### 🎯 Review Assessment
+{action_message}
+
+### 📋 Review Categories Analyzed
+- ✅ **Code Quality** - Readability, maintainability, best practices
+- ✅ **Security** - Vulnerabilities, data protection, authentication
+- ✅ **Performance** - Efficiency, scalability, resource usage
+- ✅ **Testing** - Coverage, testability, test quality
+- ✅ **Documentation** - Comments, API docs, README updates
+
+### 🚦 Merge Recommendation
+{merge_recommendation}
+
+---
+
+<details>
+<summary>ℹ️ About This Review</summary>
+
+This automated code review was generated using:
+- **AI Model**: Amazon Bedrock Claude (Sonnet)
+- **Review Timestamp**: {timestamp}
+- **Review Standards**: OWASP Top 10, CWE, Industry Best Practices
+- **Focus Areas**: Security, Performance, Code Quality, Maintainability
+
+**Note**: AI-generated reviews should complement, not replace, human code review. Always verify critical security and business logic changes manually.
+</details>
+
+---
+*🤖 Review generated automatically*

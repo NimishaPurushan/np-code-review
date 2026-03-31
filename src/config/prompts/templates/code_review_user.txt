@@ -1,0 +1,39 @@
+# Code Review Request
+
+## File Information
+- **File Path**: `{file_path}`
+- **Language**: {language}
+- **Review Type**: Code Quality, Security, Performance, and Best Practices
+
+## Pull Request Context
+{context}
+
+## Code Changes to Review
+
+```{language}
+{code}
+```
+
+---
+
+## Review Instructions
+
+1. **Analyze Thoroughly**: Review the code changes line by line
+2. **Categorize Issues**: Use severity levels (CRITICAL 🔴, WARNING 🟡, SUGGESTION 🔵, PRAISE 💚)
+3. **Be Specific**: Reference exact lines and code snippets
+4. **Provide Solutions**: Include code examples in recommendations
+5. **Consider Context**: Evaluate impact on overall design and architecture
+6. **Balance Feedback**: Acknowledge both issues and good practices
+
+## Output Requirements
+
+- Use the structured format specified in your system prompt
+- Focus ONLY on the code shown above
+- Provide at least 3-5 meaningful comments (if applicable)
+- Include at least one PRAISE comment for good implementations
+- For CRITICAL issues, explain the security/production risk clearly
+- Ensure all recommendations are actionable with code examples
+
+---
+
+**Begin your detailed review now:**
