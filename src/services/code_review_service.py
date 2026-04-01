@@ -384,17 +384,17 @@ class CodeReviewService:
                 by_severity[severity] = []
             by_severity[severity].append(comment)
 
-        result = "## 📋 Detailed Findings\n\n"
+        # result = "## 📋 Detailed Findings\n\n"
 
-        # Order: critical, warning, suggestion, praise
-        for severity in ["critical", "warning", "suggestion", "praise"]:
-            if severity in by_severity:
-                emoji = REVIEW_SEVERITY_EMOJI.get(severity, "📌")
-                comments = by_severity[severity]
+        # # Order: critical, warning, suggestion, praise
+        # for severity in ["critical", "warning", "suggestion", "praise"]:
+        #     if severity in by_severity:
+        #         emoji = REVIEW_SEVERITY_EMOJI.get(severity, "📌")
+        #         comments = by_severity[severity]
 
-                result += f"### {emoji} {severity.title()} ({len(comments)})\n\n"
+        #         result += f"### {emoji} {severity.title()} ({len(comments)})\n\n"
 
-                for comment in comments:
-                    result += f"{comment.get('text', '')}\n\n"
+        #         for comment in comments:
+        #             result += f"{comment.get('text', '')}\n\n"
 
         return result
