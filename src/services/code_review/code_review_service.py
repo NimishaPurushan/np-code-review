@@ -911,33 +911,34 @@ class CodeReviewService:
         return "\n\n".join(parts)
 
     def _format_review_results(self, all_comments: list[dict]) -> str:
-        if not all_comments:
-            return ""
+        # if not all_comments:
+        #     return ""
 
-        by_severity = {}
-        for comment in all_comments:
-            if comment.get("_posted_inline"):
-                continue
-            severity = comment.get("severity", "info")
-            if severity not in by_severity:
-                by_severity[severity] = []
-            by_severity[severity].append(comment)
+        # by_severity = {}
+        # for comment in all_comments:
+        #     if comment.get("_posted_inline"):
+        #         continue
+        #     severity = comment.get("severity", "info")
+        #     if severity not in by_severity:
+        #         by_severity[severity] = []
+        #     by_severity[severity].append(comment)
 
-        result = "## 📋 Detailed Findings\n\n"
+        # result = "## 📋 Detailed Findings\n\n"
 
-        for severity in {
-            ReviewSeverity.CRITICAL,
-            ReviewSeverity.WARNING,
-            ReviewSeverity.SUGGESTION,
-            ReviewSeverity.PRAISE,
-        }:
-            if severity in by_severity:
-                emoji = REVIEW_SEVERITY_EMOJI.get(severity, "📌")
-                comments = by_severity[severity]
+        # for severity in {
+        #     ReviewSeverity.CRITICAL,
+        #     ReviewSeverity.WARNING,
+        #     ReviewSeverity.SUGGESTION,
+        #     ReviewSeverity.PRAISE,
+        # }:
+        #     if severity in by_severity:
+        #         emoji = REVIEW_SEVERITY_EMOJI.get(severity, "📌")
+        #         comments = by_severity[severity]
 
-                result += f"### {emoji} {severity.title()} ({len(comments)})\n\n"
+        #         result += f"### {emoji} {severity.title()} ({len(comments)})\n\n"
 
-                for comment in comments:
-                    result += f"{comment.get('text', '')}\n\n"
+        #         for comment in comments:
+        #             result += f"{comment.get('text', '')}\n\n"
 
-        return result
+        # return result
+        return ""
