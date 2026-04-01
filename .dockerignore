@@ -1,0 +1,68 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+*.coverage.*
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+code_review.db
+
+# Documentation
+*.md
+docs/
+
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Terraform
+intrastructure/
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Test artifacts
+github-events/
+scripts/
+
+# Logs
+*.log
+logs/

@@ -9,11 +9,19 @@ wheels/
 # Virtual environments
 .venv
 .env
+.env.local
+.env.production
+.env.staging
+
+# Docker
+docker-compose.override.yml
+backups/
+*.sql
 
 # Logs and temporary files
 *.log
 *.tmp
-*.cache
+*cache*
 
 # OS-specific files
 .DS_Store
@@ -28,3 +36,5 @@ wheels/
 .coverage
 htmlcov/
 CODE_REVIEW_REPORT.md
+
+*.pem

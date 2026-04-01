@@ -1,0 +1,226 @@
+import logging
+
+from cachetools import TTLCache
+from github import Github, GithubIntegration
+from github.Commit import Commit
+from github.File import File
+from github.IssueComment import IssueComment
+from github.PullRequest import PullRequest
+from github.Repository import Repository
+
+logger = logging.getLogger(__name__)
+
+# GitHub App tokens expire after 1 hour (3600 seconds)
+# We cache them for slightly less (55 minutes) to avoid expiration issues
+TOKEN_TTL = 3300  # 55 minutes in seconds
+TOKEN_CACHE_SIZE = 100  # Max number of installation tokens to cache
+
+# Global token cache shared across all instances
+# This is safe because tokens are scoped to installation_id, not to individual instances
+_token_cache = TTLCache(maxsize=TOKEN_CACHE_SIZE, ttl=TOKEN_TTL)
+
+
+class GithubClient:
+    def __init__(self, github_app_id: str, github_private_key: str):
+        self.github_app_id = github_app_id
+        self.github_private_key = github_private_key
+        self._integration: GithubIntegration | None = None
+
+    @property
+    def integration(self) -> GithubIntegration:
+        if self._integration is None:
+            logger.debug("Initializing GitHub Integration")
+            self._integration = GithubIntegration(
+                self.github_app_id,
+                self.github_private_key,
+            )
+        return self._integration
+
+    def get_access_token(self, installation_id: int) -> str:
+        if installation_id in _token_cache:
+            logger.debug(f"Using cached token for installation {installation_id}")
+            return _token_cache[installation_id]
+
+        logger.info(f"Generating new access token for installation {installation_id}")
+        token = self.integration.get_access_token(installation_id).token
+        _token_cache[installation_id] = token
+        return token
+
+    def get_client(self, installation_id: int) -> Github:
+        token = self.get_access_token(installation_id)
+        return Github(token)
+
+    def get_repo(self, installation_id: int, repo_full_name: str) -> Repository:
+        client = self.get_client(installation_id)
+        return client.get_repo(repo_full_name)
+
+    def get_pull_request(
+        self, installation_id: int, repo_full_name: str, pr_number: int
+    ) -> PullRequest:
+        repo = self.get_repo(installation_id, repo_full_name)
+        return repo.get_pull(pr_number)
+
+    def get_pr_files(self, installation_id: int, repo_full_name: str, pr_number: int) -> list[File]:
+        pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
+        return list(pr.get_files())
+
+    def get_file_content(
+        self,
+        installation_id: int,
+        repo_full_name: str,
+        file_path: str,
+        ref: str,
+    ) -> str:
+        repo = self.get_repo(installation_id, repo_full_name)
+        file_content = repo.get_contents(file_path, ref=ref)
+
+        if isinstance(file_content, list):
+            raise ValueError(f"Path '{file_path}' is a directory, not a file")
+
+        return file_content.decoded_content.decode("utf-8")
+
+    def get_pr_diff_since_comment(
+        self,
+        installation_id: int,
+        repo_full_name: str,
+        pr_number: int,
+        comment_id: int,
+    ) -> list[Commit]:
+        pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
+        repo = self.get_repo(installation_id, repo_full_name)
+
+        comment = repo.get_issue(pr_number).get_comment(comment_id)
+        comment_time = comment.created_at
+        commits = list(pr.get_commits())
+        new_commits = [commit for commit in commits if commit.commit.author.date > comment_time]
+
+        return new_commits
+
+    def post_comment(
+        self,
+        installation_id: int,
+        repo_full_name: str,
+        pr_number: int,
+        body: str,
+    ) -> IssueComment:
+        pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
+        logger.info(f"Posting comment on PR #{pr_number} in {repo_full_name}")
+        return pr.create_issue_comment(body)
+
+    def get_pr_comments(
+        self, installation_id: int, repo_full_name: str, pr_number: int
+    ) -> list[IssueComment]:
+        pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
+        return list(pr.as_issue().get_comments())
+
+    def get_pr_review_comments(self, installation_id: int, repo_full_name: str, pr_number: int):
+        pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
+        return list(pr.get_review_comments())
+
+    def create_pr_comment(
+        self,
+        installation_id: int,
+        repo_full_name: str,
+        pr_number: int,
+        body: str,
+    ) -> IssueComment:
+        pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
+        return pr.as_issue().create_comment(body)
+
+    def create_review_comment(
+        self,
+        installation_id: int,
+        repo_full_name: str,
+        pr_number: int,
+        body: str,
+        commit_id: str,
+        path: str,
+        line: int,
+    ):
+        pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
+        return pr.create_review_comment(
+            body=body,
+            commit_id=commit_id,
+            path=path,
+            line=line,
+        )
+
+    def get_pr_diff(self, installation_id: int, repo_full_name: str, pr_number: int) -> str:
+        """Get the full diff for a pull request."""
+        pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
+        repo = self.get_repo(installation_id, repo_full_name)
+
+        # Get the comparison between base and head
+        comparison = repo.compare(pr.base.sha, pr.head.sha)
+
+        # Build a unified diff string from all files
+        diff_parts = []
+        for file in comparison.files:
+            if file.patch:  # patch contains the actual diff
+                diff_parts.append(f"diff --git a/{file.filename} b/{file.filename}")
+                diff_parts.append(f"--- a/{file.filename}")
+                diff_parts.append(f"+++ b/{file.filename}")
+                diff_parts.append(file.patch)
+                diff_parts.append("")  # Empty line between files
+
+        return "\n".join(diff_parts)
+
+    def get_pr_files_list(
+        self, installation_id: int, repo_full_name: str, pr_number: int
+    ) -> list[dict]:
+        """Get list of files changed in a PR with metadata."""
+        files = self.get_pr_files(installation_id, repo_full_name, pr_number)
+
+        return [
+            {
+                "filename": f.filename,
+                "status": f.status,  # 'added', 'modified', 'removed', etc.
+                "additions": f.additions,
+                "deletions": f.deletions,
+                "changes": f.changes,
+                "patch": f.patch,  # The diff for this file
+            }
+            for f in files
+        ]
+
+    def get_pr_files_with_content(
+        self, installation_id: int, repo_full_name: str, pr_number: int
+    ) -> list[dict]:
+        """Get all files changed in a PR with their full content."""
+        pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
+        files = self.get_pr_files(installation_id, repo_full_name, pr_number)
+
+        result = []
+        for file in files:
+            file_info = {
+                "filename": file.filename,
+                "status": file.status,
+                "additions": file.additions,
+                "deletions": file.deletions,
+                "changes": file.changes,
+                "patch": file.patch,
+                "content_before": None,
+                "content_after": None,
+            }
+
+            # Get content from base branch (before changes)
+            if file.status != "added":
+                try:
+                    file_info["content_before"] = self.get_file_content(
+                        installation_id, repo_full_name, file.filename, pr.base.sha
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not get before content for {file.filename}: {e}")
+
+            # Get content from head branch (after changes)
+            if file.status != "removed":
+                try:
+                    file_info["content_after"] = self.get_file_content(
+                        installation_id, repo_full_name, file.filename, pr.head.sha
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not get after content for {file.filename}: {e}")
+
+            result.append(file_info)
+
+        return result
