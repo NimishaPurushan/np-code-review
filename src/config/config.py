@@ -1,3 +1,5 @@
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,6 +26,10 @@ class Config(BaseSettings):
     AUTO_REVIEW_ENABLED: bool = True
     REVIEW_ON_READY_FOR_REVIEW: bool = True
     REVIEW_ON_NEW_COMMITS: bool = True
-    USE_AI_REVIEW: bool = True  # Enable AI-powered code review
+    USE_AI_REVIEW: bool = True
 
-    model_config = SettingsConfigDict(env_file=None, extra="ignore", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        **dict(env_file=".env", extra="ignore", case_sensitive=True)
+        if os.environ.get("ENVIRONMENT", "development") == "development"
+        else dict(extra="ignore", env_file=None, case_sensitive=True)
+    )
