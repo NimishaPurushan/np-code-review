@@ -19,5 +19,4 @@ def scan_patterns(text: str) -> list[SecretMatch]:
                         confidence=1.0,
                     )
                 )
-    print(f"Pattern Scanner: Found {len(matches)} potential secrets.")
     return matches
