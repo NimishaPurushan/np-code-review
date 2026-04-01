@@ -15,7 +15,7 @@ from services import CodeReviewService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-print("hello")
+#print("hello")
 
 def load_project_metadata():
     pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
