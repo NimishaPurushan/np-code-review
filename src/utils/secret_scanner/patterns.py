@@ -1,5 +1,5 @@
 from re import compile
-
+header = {"Authorization": "Bearer YOUR_GITHUB_TOKEN"}
 _SECRET_PATTERNS = {
     "aws_access_key": r"AKIA[0-9A-Z]{16}",
     "aws_secret_key": r"(?i)(aws_secret_access_key|aws_secret|secret)\s*[:=]\s*['\"]?([A-Za-z0-9/+=]{40})['\"]?",

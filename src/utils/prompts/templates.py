@@ -111,6 +111,8 @@ CODE_REVIEW_USER = """# Code Review Request
 ## Pull Request Context
 {context}
 
+{previous_feedback_section}
+
 ## Code Changes to Review
 
 ```{language}
@@ -121,12 +123,43 @@ CODE_REVIEW_USER = """# Code Review Request
 
 ## Review Instructions
 
-1. **Analyze Thoroughly**: Review the code changes line by line
-2. **Categorize Issues**: Use severity levels (CRITICAL 🔴, WARNING 🟡, SUGGESTION 🔵, PRAISE 💚)
-3. **Be Specific**: Reference exact lines and code snippets
-4. **Provide Solutions**: Include code examples in recommendations
-5. **Consider Context**: Evaluate impact on overall design and architecture
-6. **Balance Feedback**: Acknowledge both issues and good practices
+1. **Understand PR Intent**: Read the PR title and description carefully to understand:
+   - The PURPOSE of these changes (bug fix, feature, refactor, etc.)
+   - The SCOPE of work being done
+   - Any mentioned trade-offs, limitations, or intentional decisions
+   - Any partial implementations or work-in-progress indicators
+
+2. **Check for Scope Mismatch (CRITICAL)**:
+   - **Compare** what the PR description claims vs. what files are actually changed
+   - **Flag as WARNING** if description promises features/changes not present in the changed files
+   - Examples of mismatches to catch:
+     - Description: "Added user authentication system" → Only changed: `pyproject.toml`
+     - Description: "Refactored database layer" → Only changed: `README.md`
+     - Description: "Fixed login bug and added OAuth" → Only changed: one unrelated config file
+   - **Important**: If ALL changed files are shown, you can detect complete mismatches
+   - **Note**: Don't flag partial work if description mentions "Part 1 of X" or "WIP"
+
+3. **Contextualized Review**: 
+   - DO NOT flag issues that are explicitly explained or acknowledged in the PR description
+   - If the description mentions "TODO", "known limitation", or "will address in future PR", acknowledge it
+   - Consider whether incomplete implementations are intentional based on PR scope
+   - Verify that code changes ALIGN with the stated intent in the PR description
+
+4. **Analyze Thoroughly**: Review the code changes line by line
+
+5. **Consider Previous Feedback**: Check if issues from previous reviews have been addressed
+
+6. **Categorize Issues**: Use severity levels (CRITICAL 🔴, WARNING 🟡, SUGGESTION 🔵, PRAISE 💚)
+
+7. **Be Specific**: Reference exact lines and code snippets
+
+8. **Provide Solutions**: Include code examples in recommendations
+
+9. **Verify Alignment**: Check if implementation matches the PR description's stated goals
+
+10. **Balance Feedback**: Acknowledge both issues and good practices
+
+11. **Track Issue Resolution**: If previous feedback exists, acknowledge fixes and note unresolved issues
 
 ## Output Requirements
 
@@ -142,18 +175,25 @@ Format your response as a JSON array of comment objects:
     "title": "Short descriptive title (max 100 chars)",
     "text": "Detailed explanation with context and impact",
     "line_number": 42,
-    "recommendation": "Specific solution with code example"
+    "recommendation": "Specific solution with code example",
+    "addresses_previous_issue": false
   }}
 ]
 ```
 
 Requirements:
-- Focus ONLY on the code shown above
-- Provide 3-10 meaningful comments
-- Include at least one PRAISE comment for good implementations
-- For CRITICAL issues, explain the security/production risk clearly
-- Ensure all recommendations include code examples
-- Use line numbers when possible (estimate from context)
+- **Read PR Context First**: Understand the intent, scope, and any mentioned trade-offs from the PR description
+- **Alignment Check**: Verify code changes match the purpose stated in the PR description
+- **Respect Intentional Decisions**: Do not flag issues explicitly acknowledged in the PR description as known/intentional
+- **Focus on Code Shown**: Only review the code shown above
+- **Previous Feedback**: If exists, verify whether those issues have been addressed
+- **Acknowledge Fixes**: Add "addresses_previous_issue": true for comments about fixed issues (use PRAISE severity)
+- **Flag Recurring Issues**: Note unresolved problems from previous reviews with appropriate severity
+- **Balanced Comments**: Provide 3-10 meaningful comments
+- **Include Praise**: At least one PRAISE comment for good implementations, fixes, or alignment with PR intent
+- **Critical Issues**: Explain security/production risks clearly
+- **Code Examples**: All recommendations must include code examples
+- **Line Numbers**: Use when possible (estimate from context)
 
 ---
 
