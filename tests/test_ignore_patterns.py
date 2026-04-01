@@ -33,6 +33,10 @@ class TestIgnorePatterns:
         assert is_ignored_file("dist/bundle.js")
         assert is_ignored_file("dist/index.html")
 
+    def test_ignore_dist_nested_monorepo_path(self):
+        assert is_ignored_file("apps/web/dist/bundle.js")
+        assert is_ignored_file("packages/ui/dist/index.js")
+
     def test_ignore_build(self):
         assert is_ignored_file("build/main.js")
         assert is_ignored_file("build/output/file.txt")
@@ -139,6 +143,7 @@ class TestIgnorePatterns:
     def test_ignore_lock_files(self):
         assert is_ignored_file("yarn.lock")
         assert is_ignored_file("package-lock.json")
+        assert is_ignored_file("npm-shrinkwrap.json")
         assert is_ignored_file("pnpm-lock.yaml")
 
     def test_ignore_yarn(self):
@@ -184,6 +189,7 @@ class TestIgnorePatterns:
     def test_ignore_python_lock_files(self):
         assert is_ignored_file("poetry.lock")
         assert is_ignored_file("Pipfile.lock")
+        assert is_ignored_file("uv.lock")
 
     # Compiled/minified files
     def test_ignore_minified_files(self):

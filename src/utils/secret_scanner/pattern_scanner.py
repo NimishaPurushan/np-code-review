@@ -19,5 +19,4 @@ def scan_patterns(text: str) -> list[SecretMatch]:
                         confidence=1.0,
                     )
                 )
-
     return matches
