@@ -1,7 +1,7 @@
 import logging
 
 from cachetools import TTLCache
-from github import Github, GithubIntegration
+from github import Github, GithubException, GithubIntegration
 from github.Commit import Commit
 from github.File import File
 from github.IssueComment import IssueComment
@@ -10,13 +10,8 @@ from github.Repository import Repository
 
 logger = logging.getLogger(__name__)
 
-# GitHub App tokens expire after 1 hour (3600 seconds)
-# We cache them for slightly less (55 minutes) to avoid expiration issues
-TOKEN_TTL = 3300  # 55 minutes in seconds
-TOKEN_CACHE_SIZE = 100  # Max number of installation tokens to cache
-
-# Global token cache shared across all instances
-# This is safe because tokens are scoped to installation_id, not to individual instances
+TOKEN_TTL = 3300
+TOKEN_CACHE_SIZE = 100
 _token_cache = TTLCache(maxsize=TOKEN_CACHE_SIZE, ttl=TOKEN_TTL)
 
 
@@ -79,6 +74,21 @@ class GithubClient:
 
         return file_content.decoded_content.decode("utf-8")
 
+    def try_get_file_text(
+        self,
+        installation_id: int,
+        repo_full_name: str,
+        file_path: str,
+        ref: str,
+    ) -> str | None:
+        try:
+            return self.get_file_content(installation_id, repo_full_name, file_path, ref)
+        except GithubException as e:
+            if getattr(e, "status", None) == 404:
+                logger.debug("File not found at ref %s: %s", ref, file_path)
+                return None
+            raise e from None
+
     def get_pr_diff_since_comment(
         self,
         installation_id: int,
@@ -135,33 +145,43 @@ class GithubClient:
         body: str,
         commit_id: str,
         path: str,
-        line: int,
+        line: int | None = None,
     ):
+        """
+        Post a pull request review comment on a line, or on the whole file if ``line`` is None.
+
+        Binary / generated files often have no diff hunks with ``+`` lines; GitHub accepts
+        ``subject_type=file`` in that case (see REST API create review comment).
+        """
         pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
+        if line is not None:
+            return pr.create_review_comment(
+                body=body,
+                commit=commit_id,
+                path=path,
+                line=line,
+            )
         return pr.create_review_comment(
             body=body,
-            commit_id=commit_id,
+            commit=commit_id,
             path=path,
-            line=line,
+            subject_type="file",
         )
 
     def get_pr_diff(self, installation_id: int, repo_full_name: str, pr_number: int) -> str:
-        """Get the full diff for a pull request."""
         pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
         repo = self.get_repo(installation_id, repo_full_name)
 
-        # Get the comparison between base and head
         comparison = repo.compare(pr.base.sha, pr.head.sha)
 
-        # Build a unified diff string from all files
         diff_parts = []
         for file in comparison.files:
-            if file.patch:  # patch contains the actual diff
+            if file.patch:
                 diff_parts.append(f"diff --git a/{file.filename} b/{file.filename}")
                 diff_parts.append(f"--- a/{file.filename}")
                 diff_parts.append(f"+++ b/{file.filename}")
                 diff_parts.append(file.patch)
-                diff_parts.append("")  # Empty line between files
+                diff_parts.append("")
 
         return "\n".join(diff_parts)
 
@@ -229,7 +249,6 @@ class GithubClient:
         return list(comparison.files)
 
     def format_previous_feedback(self, previous_comments: list[dict]) -> str:
-        """Format previous bot comments into a readable context string."""
         if not previous_comments:
             return "No previous feedback from bot on this PR."
 
@@ -258,17 +277,16 @@ class GithubClient:
     def get_pr_files_list(
         self, installation_id: int, repo_full_name: str, pr_number: int
     ) -> list[dict]:
-        """Get list of files changed in a PR with metadata."""
         files = self.get_pr_files(installation_id, repo_full_name, pr_number)
 
         return [
             {
                 "filename": f.filename,
-                "status": f.status,  # 'added', 'modified', 'removed', etc.
+                "status": f.status,
                 "additions": f.additions,
                 "deletions": f.deletions,
                 "changes": f.changes,
-                "patch": f.patch,  # The diff for this file
+                "patch": f.patch,
             }
             for f in files
         ]
@@ -276,7 +294,6 @@ class GithubClient:
     def get_pr_files_with_content(
         self, installation_id: int, repo_full_name: str, pr_number: int
     ) -> list[dict]:
-        """Get all files changed in a PR with their full content."""
         pr = self.get_pull_request(installation_id, repo_full_name, pr_number)
         files = self.get_pr_files(installation_id, repo_full_name, pr_number)
 
@@ -302,7 +319,6 @@ class GithubClient:
                 except Exception as e:
                     logger.warning(f"Could not get before content for {file.filename}: {e}")
 
-            # Get content from head branch (after changes)
             if file.status != "removed":
                 try:
                     file_info["content_after"] = self.get_file_content(

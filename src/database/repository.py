@@ -1,5 +1,3 @@
-"""Repository pattern for database operations."""
-
 import hashlib
 import logging
 from datetime import datetime
@@ -16,8 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class ReviewRepository:
-    """Repository for review-related database operations."""
-
     def __init__(self, session: AsyncSession):
         self.session = session
 
@@ -29,7 +25,6 @@ class ReviewRepository:
         description: str | None = None,
         author: str | None = None,
     ) -> PullRequest:
-        """Get existing PR or create new one."""
         stmt = select(PullRequest).where(
             and_(
                 PullRequest.repo_full_name == repo_full_name,
@@ -51,7 +46,6 @@ class ReviewRepository:
             await self.session.flush()
             logger.info(f"Created PR record: {repo_full_name}#{pr_number}")
         else:
-            # Update existing PR info
             pr.title = title
             pr.description = description
             pr.updated_at = datetime.utcnow()
@@ -65,7 +59,6 @@ class ReviewRepository:
         pr_number: int,
         commit_sha: str,
     ) -> ReviewSession | None:
-        """Check if a review already exists for this commit."""
         stmt = (
             select(ReviewSession)
             .join(PullRequest)
@@ -74,6 +67,7 @@ class ReviewRepository:
                     PullRequest.repo_full_name == repo_full_name,
                     PullRequest.pr_number == pr_number,
                     ReviewSession.commit_sha == commit_sha,
+                    ReviewSession.status == "completed",
                 )
             )
         )
@@ -87,7 +81,6 @@ class ReviewRepository:
         trigger_event: str | None = None,
         ai_metadata: dict[str, Any] | None = None,
     ) -> ReviewSession:
-        """Create a new review session."""
         session = ReviewSession(
             pr_id=pr_id,
             commit_sha=commit_sha,
@@ -154,8 +147,6 @@ class ReviewRepository:
         lines_added: int = 0,
         lines_deleted: int = 0,
     ) -> FileReview:
-        """Create a file review record."""
-        # Generate content hash for caching
         content_hash = hashlib.sha256(file_content.encode()).hexdigest()
 
         file_review = FileReview(
@@ -183,7 +174,6 @@ class ReviewRepository:
         recommendation: str | None = None,
         code_snippet: str | None = None,
     ) -> ReviewComment:
-        """Create a review comment."""
         comment = ReviewComment(
             file_review_id=file_review_id,
             severity=severity,
@@ -196,10 +186,16 @@ class ReviewRepository:
         )
         self.session.add(comment)
         await self.session.flush()
+
+        fr_stmt = select(FileReview).where(FileReview.id == file_review_id)
+        fr_result = await self.session.execute(fr_stmt)
+        file_review = fr_result.scalar_one()
+        file_review.comment_count = (file_review.comment_count or 0) + 1
+        await self.session.flush()
+
         return comment
 
     async def get_review_session_with_details(self, session_id: UUID) -> ReviewSession:
-        """Get review session with all related data."""
         stmt = (
             select(ReviewSession)
             .where(ReviewSession.id == session_id)
@@ -222,18 +218,16 @@ class ReviewRepository:
                 )
             )
         )
-        
+
         if before_commit:
             stmt = stmt.where(ReviewSession.commit_sha != before_commit)
-        
+
         stmt = stmt.order_by(ReviewSession.completed_at.desc())
-        
+
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def get_reviewed_files_from_session(
-        self, session_id: UUID
-    ) -> dict[str, dict]:
+    async def get_reviewed_files_from_session(self, session_id: UUID) -> dict[str, dict]:
         stmt = (
             select(FileReview)
             .where(FileReview.session_id == session_id)
@@ -241,7 +235,7 @@ class ReviewRepository:
         )
         result = await self.session.execute(stmt)
         file_reviews = result.scalars().all()
-        
+
         reviewed_files = {}
         for file_review in file_reviews:
             reviewed_files[file_review.file_path] = {
@@ -259,11 +253,10 @@ class ReviewRepository:
                     for comment in file_review.comments
                 ],
             }
-        
+
         return reviewed_files
 
     async def mark_comments_posted(self, comment_ids: list[UUID], github_review_id: int):
-        """Mark comments as posted to GitHub."""
         for comment_id in comment_ids:
             stmt = select(ReviewComment).where(ReviewComment.id == comment_id)
             result = await self.session.execute(stmt)

@@ -1,5 +1,3 @@
-"""Database package for persistent storage."""
-
 from .models import Base, FileReview, PullRequest, ReviewComment, ReviewSession
 from .repository import ReviewRepository
 from .session import create_tables, get_db, init_db

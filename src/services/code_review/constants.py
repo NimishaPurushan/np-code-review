@@ -1,9 +1,8 @@
 from ...utils.prompts.types import ReviewSeverity
 
-# Chunking constants
 MAX_FILES_PER_BATCH = 10
-MAX_TOKENS_PER_FILE = 10_000  # Rough estimate: 40KB of code
-MAX_TOKENS_PER_BATCH = 50_000  # Conservative limit to stay within AI context window
+MAX_TOKENS_PER_FILE = 10_000
+MAX_TOKENS_PER_BATCH = 50_000
 
 REVIEW_SEVERITY_EMOJI = {
     ReviewSeverity.CRITICAL: "🔴",

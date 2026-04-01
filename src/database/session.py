@@ -1,5 +1,3 @@
-"""Database session management."""
-
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -11,13 +9,11 @@ from .models import Base
 
 logger = logging.getLogger(__name__)
 
-# Global engine and session factory
 _engine = None
 _async_session_factory = None
 
 
 def init_db(database_url: str | None = None):
-    """Initialize database engine and session factory."""
     global _engine, _async_session_factory
 
     if database_url is None:
@@ -46,7 +42,6 @@ def init_db(database_url: str | None = None):
 
 
 async def create_tables():
-    """Create all database tables."""
     global _engine
     if _engine is None:
         init_db()
@@ -59,7 +54,6 @@ async def create_tables():
 
 @asynccontextmanager
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Get database session."""
     global _async_session_factory
 
     if _async_session_factory is None:
