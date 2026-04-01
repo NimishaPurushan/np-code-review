@@ -66,3 +66,4 @@ scripts/
 # Logs
 *.log
 logs/
+*.db

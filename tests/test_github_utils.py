@@ -3,7 +3,7 @@ import hmac
 
 import pytest
 
-from services.github.utils import verify_github_signature
+from src.services.github.utils import verify_github_signature
 
 
 def test_verify_valid_signature():

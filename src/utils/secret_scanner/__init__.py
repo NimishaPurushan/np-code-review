@@ -2,6 +2,34 @@ from .entropy_scanner import calculate_shannon_entropy, scan_entropy
 from .pattern_scanner import scan_patterns
 from .types import SecretMatch
 
+_PLACEHOLDER_MARKERS = (
+    "your_",
+    "changeme",
+    "change_me",
+    "placeholder",
+    "<your",
+    "todo: replace",
+    "example_key",
+    "sample_token",
+    "insert_",
+    "fake_",
+    "dummy_",
+    "test_token",
+    "not_a_real",
+)
+
+
+def _filter_placeholder_matches(matches: list[SecretMatch], text: str) -> list[SecretMatch]:
+    lines = text.splitlines()
+    kept: list[SecretMatch] = []
+    for m in matches:
+        line = lines[m.line_number - 1] if 0 < m.line_number <= len(lines) else ""
+        blob = f"{line} {m.value}".lower()
+        if any(marker in blob for marker in _PLACEHOLDER_MARKERS):
+            continue
+        kept.append(m)
+    return kept
+
 
 def detect_secrets(
     text: str,
@@ -14,7 +42,8 @@ def detect_secrets(
     if enable_entropy:
         matches.extend(scan_entropy(text, entropy_threshold, min_entropy_length))
 
-    return _deduplicate(matches)
+    matches = _deduplicate(matches)
+    return _filter_placeholder_matches(matches, text)
 
 
 def _deduplicate(matches: list[SecretMatch]) -> list[SecretMatch]:

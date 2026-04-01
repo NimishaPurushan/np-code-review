@@ -14,6 +14,8 @@ _SECRET_PATTERNS = {
     "stripe_key": r"sk_live_[0-9a-zA-Z]{24,}",
     "square_token": r"sq0atp-[0-9A-Za-z\-_]{22}",
     "google_api_key": r"AIza[0-9A-Za-z\-_]{35}",
+    "authorization_bearer": r"(?i)['\"]Bearer\s+[A-Za-z0-9_\-]{8,}['\"]",
+    "authorization_header": r"(?i)['\"]Authorization['\"]:\s*['\"]Bearer\s+[A-Za-z0-9_\-]{8,}['\"]",
     "authorization_token": r"(?i)(authorization|auth[_-]?token|bearer)\s*[:=]\s*['\"]?([A-Za-z0-9_\-\/+=]{20,})['\"]?",
 }
 

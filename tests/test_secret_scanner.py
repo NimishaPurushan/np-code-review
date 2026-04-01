@@ -84,6 +84,13 @@ def test_no_secrets():
     assert len(matches) == 0
 
 
+def test_placeholder_bearer_line_not_flagged():
+    """Example tokens like YOUR_* should not trigger overlapping auth pattern alerts."""
+    text = 'header = {"Authorization": "Bearer YOUR_GITHUB_TOKEN"}'
+    matches = detect_secrets(text, enable_entropy=False)
+    assert len(matches) == 0
+
+
 def test_high_entropy_detection():
     text = "token = 'Kj8mNp3Rq5Tv7Wx9Yz2Ab4Cd6Ef8Gh1Ij3Kl5Mn7Op9Qr1St3Uv5'"
     matches = detect_secrets(text, enable_entropy=True)

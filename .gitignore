@@ -38,3 +38,4 @@ htmlcov/
 CODE_REVIEW_REPORT.md
 
 *.pem
+*.db
