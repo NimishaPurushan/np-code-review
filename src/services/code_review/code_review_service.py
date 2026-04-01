@@ -687,9 +687,6 @@ class CodeReviewService:
                 "the thread.\n\n"
             )
 
-        # Add detailed results grouped by file (excludes items already posted inline)
-        review_comment += self._format_review_results(all_comments)
-
         # Add failure notice if any
         if files_failed > 0:
             review_comment += f"\n\n⚠️ Note: {files_failed} file(s) failed to review.\n"
@@ -910,35 +907,3 @@ class CodeReviewService:
             parts.append(f"**Suggestion**: {rec}")
         return "\n\n".join(parts)
 
-    def _format_review_results(self, all_comments: list[dict]) -> str:
-        # if not all_comments:
-        #     return ""
-
-        # by_severity = {}
-        # for comment in all_comments:
-        #     if comment.get("_posted_inline"):
-        #         continue
-        #     severity = comment.get("severity", "info")
-        #     if severity not in by_severity:
-        #         by_severity[severity] = []
-        #     by_severity[severity].append(comment)
-
-        # result = "## 📋 Detailed Findings\n\n"
-
-        # for severity in {
-        #     ReviewSeverity.CRITICAL,
-        #     ReviewSeverity.WARNING,
-        #     ReviewSeverity.SUGGESTION,
-        #     ReviewSeverity.PRAISE,
-        # }:
-        #     if severity in by_severity:
-        #         emoji = REVIEW_SEVERITY_EMOJI.get(severity, "📌")
-        #         comments = by_severity[severity]
-
-        #         result += f"### {emoji} {severity.title()} ({len(comments)})\n\n"
-
-        #         for comment in comments:
-        #             result += f"{comment.get('text', '')}\n\n"
-
-        # return result
-        return ""
