@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from difflib import SequenceMatcher
 from pathlib import Path
 
 from ..aws import get_bedrock_client
@@ -272,6 +273,9 @@ class CodeReviewService:
                         status="failed",
                     )
 
+        # Deduplicate comments to avoid redundant findings
+        all_comments = self._deduplicate_comments(all_comments)
+
         # Update session statistics
         critical_count = sum(1 for c in all_comments if c.get("severity") == "critical")
         warning_count = sum(1 for c in all_comments if c.get("severity") == "warning")
@@ -310,9 +314,6 @@ class CodeReviewService:
         else:
             review_comment += "## ✅ Review Summary\n\n"
             review_comment += "No issues found. Code looks good!\n\n"
-
-        # Add detailed results grouped by file
-        review_comment += self._format_review_results(all_comments)
 
         # Add failure notice if any
         if files_failed > 0:
@@ -371,18 +372,77 @@ class CodeReviewService:
 
         return batches
 
+    def _deduplicate_comments(self, all_comments: list[dict]) -> list[dict]:
+        """
+        Remove duplicate or highly similar comments to avoid redundant findings.
+        
+        Uses text similarity matching to detect duplicates while preserving
+        the most severe or detailed version of each unique issue.
+        """
+        if not all_comments:
+            return []
+
+        deduplicated = []
+        similarity_threshold = 0.75  # 75% similarity considered duplicate
+
+        for comment in all_comments:
+            comment_text = comment.get("text", "").lower()
+            comment_title = comment.get("title", "").lower() if comment.get("title") else ""
+            is_duplicate = False
+
+            for existing in deduplicated:
+                existing_text = existing.get("text", "").lower()
+                existing_title = existing.get("title", "").lower() if existing.get("title") else ""
+
+                # Compare both text and title
+                text_similarity = SequenceMatcher(None, comment_text, existing_text).ratio()
+                title_similarity = (
+                    SequenceMatcher(None, comment_title, existing_title).ratio()
+                    if comment_title and existing_title
+                    else 0
+                )
+
+                # Consider duplicate if text is very similar OR title matches closely
+                if text_similarity >= similarity_threshold or title_similarity >= 0.85:
+                    is_duplicate = True
+                    
+                    # Replace with higher severity version
+                    severity_order = {"critical": 4, "warning": 3, "suggestion": 2, "info": 1, "praise": 0}
+                    comment_severity = severity_order.get(comment.get("severity", "info"), 1)
+                    existing_severity = severity_order.get(existing.get("severity", "info"), 1)
+                    
+                    if comment_severity > existing_severity:
+                        # Replace with higher severity version
+                        deduplicated.remove(existing)
+                        deduplicated.append(comment)
+                    elif comment_severity == existing_severity and len(comment_text) > len(existing_text):
+                        # Same severity but more detailed, replace
+                        deduplicated.remove(existing)
+                        deduplicated.append(comment)
+                    
+                    break
+
+            if not is_duplicate:
+                deduplicated.append(comment)
+
+        removed_count = len(all_comments) - len(deduplicated)
+        if removed_count > 0:
+            logger.info(f"Deduplicated {removed_count} similar comment(s)")
+
+        return deduplicated
+
     def _format_review_results(self, all_comments: list[dict]) -> str:
         """Format review comments into markdown."""
-        if not all_comments:
-            return ""
+        # if not all_comments:
+        #     return ""
 
-        # Group comments by severity
-        by_severity = {}
-        for comment in all_comments:
-            severity = comment.get("severity", "info")
-            if severity not in by_severity:
-                by_severity[severity] = []
-            by_severity[severity].append(comment)
+        # # Group comments by severity
+        # by_severity = {}
+        # for comment in all_comments:
+        #     severity = comment.get("severity", "info")
+        #     if severity not in by_severity:
+        #         by_severity[severity] = []
+        #     by_severity[severity].append(comment)
 
         # result = "## 📋 Detailed Findings\n\n"
 
@@ -397,4 +457,5 @@ class CodeReviewService:
         #         for comment in comments:
         #             result += f"{comment.get('text', '')}\n\n"
 
-        return result
+        # return result
+        return ""
