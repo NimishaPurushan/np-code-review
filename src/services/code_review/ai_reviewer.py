@@ -1,16 +1,16 @@
 import json
 import logging
 
-from ..utils.prompts import get_system_prompt, get_user_prompt
-from .aws import BedrockClient
+from src.utils.prompts import get_system_prompt, get_user_prompt
+
+from ..aws import BedrockClient
 
 logger = logging.getLogger(__name__)
 
 
 class AICodeReviewer:
-    def __init__(self, bedrock_client: BedrockClient, model_id: str):
+    def __init__(self, bedrock_client: BedrockClient):
         self.bedrock = bedrock_client
-        self.model_id = model_id
 
     def review_code(
         self,
@@ -18,6 +18,7 @@ class AICodeReviewer:
         file_path: str,
         language: str,
         context: str | None = None,
+        previous_feedback: str | None = None,
     ) -> dict:
         system_prompt = get_system_prompt(language)
         user_prompt = get_user_prompt(
@@ -25,6 +26,7 @@ class AICodeReviewer:
             language=language,
             code=code,
             context=context,
+            previous_feedback=previous_feedback,
         )
 
         messages = [{"role": "user", "content": [{"type": "text", "text": user_prompt}]}]

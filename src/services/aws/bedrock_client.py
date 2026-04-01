@@ -7,6 +7,8 @@ import boto3
 from botocore.config import Config as BotoConfig
 from botocore.exceptions import ClientError
 
+from .utils import build_request_body, extract_text_from_response, normalize_messages
+
 logger = logging.getLogger(__name__)
 
 # Constants for retry logic
@@ -42,58 +44,6 @@ class BedrockClient:
             )
         return self._runtime_client
 
-    def _normalize_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Normalize message format based on model family."""
-        normalized = []
-
-        for msg in messages:
-            role = msg["role"]
-            content = msg["content"]
-
-            # If content is a string, convert to appropriate format
-            if isinstance(content, str):
-                if self.model_id.startswith("amazon.nova"):
-                    # Nova models: array of objects with just "text" key
-                    normalized.append({"role": role, "content": [{"text": content}]})
-                else:
-                    # Anthropic models: array of objects with "type" and "text"
-                    normalized.append(
-                        {"role": role, "content": [{"type": "text", "text": content}]}
-                    )
-            # If content is already an array
-            elif isinstance(content, list):
-                if self.model_id.startswith("amazon.nova"):
-                    # Nova: ensure no "type" field
-                    nova_content = []
-                    for item in content:
-                        if isinstance(item, dict):
-                            if "type" in item and item["type"] == "text":
-                                # Remove type field for Nova
-                                nova_content.append({"text": item["text"]})
-                            else:
-                                nova_content.append(item)
-                        else:
-                            nova_content.append({"text": str(item)})
-                    normalized.append({"role": role, "content": nova_content})
-                else:
-                    # Anthropic: ensure proper format with type
-                    anthropic_content = []
-                    for item in content:
-                        if isinstance(item, dict):
-                            if "type" not in item and "text" in item:
-                                # Add type field for Anthropic
-                                anthropic_content.append({"type": "text", "text": item["text"]})
-                            else:
-                                anthropic_content.append(item)
-                        else:
-                            anthropic_content.append({"type": "text", "text": str(item)})
-                    normalized.append({"role": role, "content": anthropic_content})
-            else:
-                # Keep as-is if neither string nor list
-                normalized.append(msg)
-
-        return normalized
-
     def invoke_model(
         self,
         messages: list[dict[str, Any]],
@@ -113,48 +63,17 @@ class BedrockClient:
         for attempt in range(1, MAX_RETRIES + 1):
             try:
                 # Normalize messages format based on model family
-                normalized_messages = self._normalize_messages(messages)
+                normalized_messages = normalize_messages(messages, self.model_id)
 
-                # Build request body based on model family
-                if self.model_id.startswith("anthropic."):
-                    # Anthropic Claude models
-                    body = {
-                        "anthropic_version": "bedrock-2023-05-31",
-                        "messages": normalized_messages,
-                        "max_tokens": self.max_tokens,
-                        "temperature": self.temperature,
-                    }
-                    if system:
-                        body["system"] = system
-                elif self.model_id.startswith("amazon.nova"):
-                    # Amazon Nova models use a different format
-                    body = {
-                        "messages": normalized_messages,
-                        "inferenceConfig": {
-                            "maxTokens": self.max_tokens,
-                            "temperature": self.temperature,
-                        },
-                    }
-                    if system:
-                        body["system"] = [{"text": system}]
-                else:
-                    # Default to Anthropic format for unknown models
-                    body = {
-                        "anthropic_version": "bedrock-2023-05-31",
-                        "messages": normalized_messages,
-                        "max_tokens": self.max_tokens,
-                        "temperature": self.temperature,
-                    }
-                    if system:
-                        body["system"] = system
-
-                # Filter out parameters that shouldn't be in the body
-                filtered_kwargs = {
-                    k: v
-                    for k, v in kwargs.items()
-                    if k not in ["max_tokens", "temperature", "model_id"]
-                }
-                body.update(filtered_kwargs)
+                # Build request body using utility function
+                body = build_request_body(
+                    model_id=self.model_id,
+                    messages=normalized_messages,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    system=system,
+                    **kwargs,
+                )
 
                 logger.info(
                     f"Invoking model {self.model_id} (attempt {attempt}/{MAX_RETRIES}) "
@@ -245,15 +164,6 @@ Provide specific recommendations with examples where applicable."""
             messages=messages,
             system=system_prompt,
         )
-        if self.model_id.startswith("amazon.nova"):
-            # Extract text from Nova response
-            content = response["output"]["message"]["content"]
-            if content and isinstance(content, list):
-                return content[0].get("text", "")
-        else:
-            # Extract text from response
-            content = response.get("content", [])
-            if content and isinstance(content, list):
-                return content[0].get("text", "")
 
-        return ""
+        # Extract text using utility function
+        return extract_text_from_response(self.model_id, response)

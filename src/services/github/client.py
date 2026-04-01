@@ -165,6 +165,96 @@ class GithubClient:
 
         return "\n".join(diff_parts)
 
+    def get_bot_username(self, installation_id: int) -> str:
+        client = self.get_client(installation_id)
+        return client.get_user().login
+
+    def get_bot_previous_comments(
+        self, installation_id: int, repo_full_name: str, pr_number: int
+    ) -> list[dict]:
+        try:
+            bot_username = self.get_bot_username(installation_id)
+            all_bot_comments = []
+
+            issue_comments = self.get_pr_comments(installation_id, repo_full_name, pr_number)
+            for comment in issue_comments:
+                if comment.user and comment.user.login == bot_username:
+                    all_bot_comments.append(
+                        {
+                            "type": "general",
+                            "author": bot_username,
+                            "created_at": comment.created_at.isoformat(),
+                            "body": comment.body,
+                        }
+                    )
+
+            review_comments = self.get_pr_review_comments(
+                installation_id, repo_full_name, pr_number
+            )
+            for comment in review_comments:
+                if comment.user and comment.user.login == bot_username:
+                    all_bot_comments.append(
+                        {
+                            "type": "inline",
+                            "author": bot_username,
+                            "created_at": comment.created_at.isoformat(),
+                            "file": comment.path,
+                            "line": comment.line
+                            if hasattr(comment, "line")
+                            else comment.original_line,
+                            "body": comment.body,
+                        }
+                    )
+
+            all_bot_comments.sort(key=lambda x: x["created_at"])
+            logger.info(f"Found {len(all_bot_comments)} previous bot comments on PR #{pr_number}")
+            return all_bot_comments
+
+        except Exception as e:
+            logger.warning(f"Error retrieving bot previous comments: {e}")
+            return []
+
+    def get_commit_files(
+        self, installation_id: int, repo_full_name: str, commit_sha: str
+    ) -> list[File]:
+        repo = self.get_repo(installation_id, repo_full_name)
+        commit = repo.get_commit(commit_sha)
+        return list(commit.files)
+
+    def compare_commits(
+        self, installation_id: int, repo_full_name: str, base_sha: str, head_sha: str
+    ) -> list[File]:
+        repo = self.get_repo(installation_id, repo_full_name)
+        comparison = repo.compare(base_sha, head_sha)
+        return list(comparison.files)
+
+    def format_previous_feedback(self, previous_comments: list[dict]) -> str:
+        """Format previous bot comments into a readable context string."""
+        if not previous_comments:
+            return "No previous feedback from bot on this PR."
+
+        formatted_lines = ["## Previous Bot Feedback\n"]
+
+        for idx, comment in enumerate(previous_comments, 1):
+            comment_type = comment.get("type", "general")
+            created_at = comment.get("created_at", "")
+            body = comment.get("body", "")
+
+            if comment_type == "inline":
+                file_path = comment.get("file", "unknown")
+                line = comment.get("line", "?")
+                formatted_lines.append(
+                    f"### Comment {idx} (Inline on `{file_path}` line {line})\n"
+                    f"**Date**: {created_at}\n"
+                    f"{body}\n"
+                )
+            else:
+                formatted_lines.append(
+                    f"### Comment {idx} (General PR Comment)\n**Date**: {created_at}\n{body}\n"
+                )
+
+        return "\n".join(formatted_lines)
+
     def get_pr_files_list(
         self, installation_id: int, repo_full_name: str, pr_number: int
     ) -> list[dict]:
