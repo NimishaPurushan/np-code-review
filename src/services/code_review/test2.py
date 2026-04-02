@@ -16,3 +16,6 @@ def test():
     print("\n" + "="*80)
     print(f"Code Review Service with SQLite Database")
     a=1+2
+    l = [1,2,3]
+    print("="*80)
+    print(l)
