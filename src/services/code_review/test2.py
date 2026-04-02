@@ -15,3 +15,4 @@ logger = logging.getLogger(__name__)
 def test():
     print("\n" + "="*80)
     print(f"Code Review Service with SQLite Database")
+    a=1+2
