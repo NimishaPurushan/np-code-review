@@ -18,7 +18,7 @@ def init_db(database_url: str | None = None):
 
     if database_url is None:
         config = Config()
-        database_url = config.database_url
+        database_url = config.DATABASE_URL
 
     logger.info(
         f"Initializing database: {database_url.split('@')[-1] if '@' in database_url else 'local'}"

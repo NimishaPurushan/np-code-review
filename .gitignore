@@ -31,6 +31,8 @@ backups/
 *.tfstate.backup
 .terraform/
 .terraform.lock.hcl
+terraform.tfvars
+tfplan
 
 # Test artifact
 .coverage
@@ -39,3 +41,7 @@ CODE_REVIEW_REPORT.md
 
 *.pem
 *.db
+
+*.tfvars
+*.tfstate
+*.tfstate.backup
