@@ -327,3 +327,31 @@ class AICodeReviewer:
 - **Critical Issues**: {critical_count}
 - **Warnings**: {warning_count}
 {action_message}"""
+        
+
+    def _generate_overal(self, reviews: list[dict]) -> str:
+        total_comments = sum(len(r.get("comments", [])) for r in reviews)
+        critical_count = sum(
+            1
+            for r in reviews
+            for c in r.get("comments", [])
+            if c.get("severity") == ReviewSeverity.CRITICAL
+        )
+        warning_count = sum(
+            1
+            for r in reviews
+            for c in r.get("comments", [])
+            if c.get("severity") == ReviewSeverity.WARNING
+        )
+        suggestion_count = sum(
+            1
+            for r in reviews
+            for c in r.get("comments", [])
+            if c.get("severity") == ReviewSeverity.SUGGESTION
+        )
+        praise_count = sum(
+            1
+            for r in reviews
+            for c in r.get("comments", [])
+            if c.get("severity") == ReviewSeverity.PRAISE
+        )

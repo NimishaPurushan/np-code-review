@@ -8,8 +8,9 @@ from fastapi.responses import JSONResponse
 
 from .config import Config
 from .database import create_tables
-from .dependencies import GitHubDependency, get_github_client
-from .services import CodeReviewService
+from .dependencies import get_github_client
+from .services.code_review.code_review_service import CodeReviewService
+from .services.github import GithubClient
 from .services.github.types import GitHubEventType
 from .services.github.utils import verify_github_signature
 
@@ -88,7 +89,7 @@ async def github_webhook(
     request: Request,
     x_github_event: str | None = Header(None),
     x_hub_signature_256: str | None = Header(None),
-    github: GitHubDependency = Depends(get_github_client),  # noqa: B008
+    github: GithubClient = Depends(get_github_client),
 ):
     payload = await request.body()
 
@@ -111,7 +112,7 @@ async def trigger_code_review(
     repo_full_name: str,
     pr_number: int,
     pr_data: dict,
-    github: GitHubDependency,
+    github: GithubClient,
     installation_id: int,
 ):
     await code_review_service.review_pull_request(

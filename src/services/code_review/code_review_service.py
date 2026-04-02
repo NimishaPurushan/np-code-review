@@ -906,4 +906,3 @@ class CodeReviewService:
         if rec:
             parts.append(f"**Suggestion**: {rec}")
         return "\n\n".join(parts)
-
