@@ -17,7 +17,7 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
+#print("hello")
 
 def load_project_metadata():
     pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
